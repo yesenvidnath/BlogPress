@@ -1,0 +1,18 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class ImageList extends Model
+{
+    use HasFactory;
+
+    protected $primaryKey = 'image_list_ID';
+
+    public function galleries()
+    {
+        return $this->hasMany(Gallery::class, 'image_list_ID');
+    }
+}
