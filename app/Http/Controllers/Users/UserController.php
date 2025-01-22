@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Users;
 
-use App\Http\Controllers\Controller;
-use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use App\Http\Controllers\Controller;
 
 class UserController extends Controller
 {
@@ -19,8 +19,8 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'user_type' => 'required|string|in:Admin,ContentWriter,SEO Analyst',
+            'password' => 'required|string|min:8',
+            'user_type' => 'required|in:Admin,ContentWriter,SEO Analyst',
         ]);
 
         $user = User::create([
@@ -28,19 +28,22 @@ class UserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'user_type' => $request->user_type,
+            'is_deleted' => 0, // Default to active user
         ]);
 
+        // Create Auth Token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'User registered successfully',
-            'user' => $user,
-            'token' => $token,
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $user
         ], 201);
     }
 
     /**
-     * Login a user.
+     * Login an existing user.
      */
     public function login(Request $request)
     {
@@ -49,36 +52,42 @@ class UserController extends Controller
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $request->email)->where('is_deleted', 0)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => ['The provided credentials are incorrect or account is deleted.'],
             ]);
         }
 
+        // Revoke previous tokens
+        $user->tokens()->delete();
+
+        // Create new Auth Token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',
-            'user' => $user,
-            'token' => $token,
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $user
         ], 200);
     }
 
     /**
-     * Logout a user.
+     * Logout user (Revoke Token).
      */
     public function logout(Request $request)
     {
         $request->user()->tokens()->delete();
+
         return response()->json([
             'message' => 'Successfully logged out'
         ], 200);
     }
 
     /**
-     * Get the authenticated user's profile.
+     * Get Authenticated User Profile.
      */
     public function userProfile(Request $request)
     {
