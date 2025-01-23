@@ -11,6 +11,19 @@ class Page extends Model
 
     protected $primaryKey = 'page_ID';
 
+    protected $fillable = [
+        'doneby',
+        'page_name',
+        'slug',
+        'meta_tags',
+        'description',
+        'type',
+        'featured_image',
+        'content',
+        'category_ID',
+        'is_deleted'
+    ];
+
     public function category()
     {
         return $this->belongsTo(Category::class, 'category_ID');
